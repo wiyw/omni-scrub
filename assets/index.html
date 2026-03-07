@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🫧 OmniScrub — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0c10;
+  --panel: #10141c;
+  --panel2: #161b26;
+  --border: #1e2a3a;
+  --accent: #00e5ff;
+  --accent2: #7c3aed;
+  --accent3: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --font: 'Syne', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* TOP BAR */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:52px;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+#topbar .logo{font-size:1.2rem;font-weight:800;letter-spacing:-.02em;color:var(--accent);}
+#topbar .logo span{color:var(--text);opacity:.5;}
+#topbar .status-row{display:flex;gap:16px;align-items:center;}
+.status-pill{
+  font-family:var(--mono);font-size:.7rem;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--border);display:flex;align-items:center;gap:6px;
+}
+.status-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.status-pill.online .dot{background:var(--green);box-shadow:0 0 8px var(--green);}
+.status-pill.warn .dot{background:var(--accent3);box-shadow:0 0 8px var(--accent3);}
+#topbar .toolbar-btns{display:flex;gap:8px;}
+.tbtn{
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--font);font-size:.75rem;font-weight:600;padding:5px 14px;
+  border-radius:6px;cursor:pointer;transition:all .15s;
+}
+.tbtn:hover{border-color:var(--accent);color:var(--accent);}
+.tbtn.danger{border-color:var(--red);color:var(--red);}
+.tbtn.primary{background:var(--accent);color:#000;border-color:var(--accent);}
+.tbtn.primary:hover{background:#00c4dc;}
+
+/* MAIN LAYOUT */
+#main{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+#sidebar{
+  width:200px;flex-shrink:0;
+  background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+.nav-section{padding:14px 12px 6px;font-family:var(--mono);font-size:.62rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 16px;cursor:pointer;
+  font-size:.82rem;font-weight:600;color:var(--muted);
+  transition:all .15s;border-left:3px solid transparent;
+  position:relative;
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,229,255,.05);}
+.nav-item .badge{
+  margin-left:auto;font-family:var(--mono);font-size:.6rem;
+  background:var(--accent2);color:#fff;padding:1px 6px;border-radius:10px;
+}
+.nav-icon{font-size:1rem;width:20px;text-align:center;}
+#sidebar .bot-summary{
+  margin-top:auto;padding:14px;border-top:1px solid var(--border);
+}
+.bot-card{
+  background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;
+}
+.bot-card .name{font-weight:700;font-size:.82rem;color:var(--accent);}
+.bot-card .stats{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.bot-card .stat{font-family:var(--mono);font-size:.62rem;color:var(--muted);}
+.bot-card .stat b{color:var(--text);}
+
+/* CONTENT AREA */
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+/* TABS */
+.tab-pane{display:none;flex:1;overflow:hidden;}
+.tab-pane.active{display:flex;flex-direction:column;}
+
+/* ===== DASHBOARD TAB ===== */
+#tab-dashboard{
+  flex-direction:column;overflow-y:auto;padding:16px;gap:16px;
+  background:var(--bg);
+}
+.dash-row{display:grid;gap:14px;}
+.dash-row.r4{grid-template-columns:repeat(4,1fr);}
+.dash-row.r2{grid-template-columns:1fr 1fr;}
+.dash-row.r3{grid-template-columns:1fr 1fr 1fr;}
+.dash-row.r-main{grid-template-columns:1.5fr 1fr;}
+
+.dcard{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:14px;position:relative;overflow:hidden;
+}
+.dcard::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0;transition:.3s;
+}
+.dcard:hover::before{opacity:1;}
+.dcard .card-title{
+  font-family:var(--mono);font-size:.65rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;
+}
+.dcard .big-val{font-size:2rem;font-weight:800;color:var(--accent);line-height:1;}
+.dcard .big-label{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.dcard .delta{font-family:var(--mono);font-size:.65rem;margin-top:6px;}
+.dcard .delta.up{color:var(--green);}
+.dcard .delta.down{color:var(--red);}
+
+/* Progress bar */
+.prog-bar{height:5px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .5s;}
+.prog-fill.warn{background:var(--accent3);}
+.prog-fill.danger{background:var(--red);}
+
+/* Mini map in dashboard */
+#minimap-canvas{width:100%;height:180px;background:var(--panel2);border-radius:8px;position:relative;overflow:hidden;border:1px solid var(--border);}
+#minimap-canvas canvas{width:100%;height:100%;}
+
+/* Dash camera */
+#dash-cam-wrap{
+  position:relative;background:#000;border-radius:8px;overflow:hidden;
+  height:180px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+}
+#dash-cam-wrap video{width:100%;height:100%;object-fit:cover;}
+#dash-cam-wrap .cam-overlay{
+  position:absolute;inset:0;pointer-events:none;
+}
+.cam-corner{position:absolute;width:14px;height:14px;border-color:var(--accent);border-style:solid;opacity:.7;}
+.cam-corner.tl{top:8px;left:8px;border-width:2px 0 0 2px;}
+.cam-corner.tr{top:8px;right:8px;border-width:2px 2px 0 0;}
+.cam-corner.bl{bottom:8px;left:8px;border-width:0 0 2px 2px;}
+.cam-corner.br{bottom:8px;right:8px;border-width:0 2px 2px 0;}
+.cam-label{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.6rem;background:rgba(0,0,0,.6);color:var(--accent);padding:2px 8px;border-radius:4px;}
+.cam-fps{position:absolute;bottom:8px;right:8px;font-family:var(--mono);font-size:.6rem;background:rgba(0,0,0,.6);color:var(--green);padding:2px 6px;border-radius:4px;}
+.cam-placeholder{color:var(--muted);font-size:.8rem;text-align:center;}
+.cam-placeholder button{margin-top:10px;background:var(--accent);color:#000;border:none;padding:6px 14px;border-radius:6px;font-family:var(--font);font-weight:700;cursor:pointer;}
+
+/* Activity feed */
+.activity-feed{max-height:200px;overflow-y:auto;}
+.activity-item{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:7px 0;border-bottom:1px solid var(--border);font-size:.75rem;
+}
+.activity-item:last-child{border-bottom:none;}
+.activity-item .a-icon{font-size:.9rem;flex-shrink:0;}
+.activity-item .a-time{font-family:var(--mono);font-size:.62rem;color:var(--muted);flex-shrink:0;}
+.activity-item .a-text{color:var(--text);}
+.activity-item .a-tag{
+  margin-left:auto;font-family:var(--mono);font-size:.58rem;
+  padding:1px 6px;border-radius:4px;flex-shrink:0;
+}
+.a-tag.ok{background:rgba(16,185,129,.15);color:var(--green);}
+.a-tag.warn{background:rgba(245,158,11,.15);color:var(--accent3);}
+.a-tag.info{background:rgba(0,229,255,.1);color:var(--accent);}
+
+/* System health */
+.health-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+.health-item{background:var(--panel2);border-radius:6px;padding:8px;}
+.health-item .h-label{font-family:var(--mono);font-size:.6rem;color:var(--muted);}
+.health-item .h-val{font-size:1.1rem;font-weight:700;margin-top:2px;}
+.health-item .h-val.ok{color:var(--green);}
+.health-item .h-val.warn{color:var(--accent3);}
+.health-item .h-val.bad{color:var(--red);}
+
+/* Sensor row */
+.sensor-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.sensor-row{display:flex;align-items:center;gap:10px;font-size:.75rem;}
+.sensor-row .s-name{width:80px;color:var(--muted);font-family:var(--mono);font-size:.65rem;}
+.sensor-row .s-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.sensor-row .s-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .4s;}
+.sensor-row .s-val{width:40px;text-align:right;font-family:var(--mono);font-size:.65rem;}
+
+/* ===== MAP TAB ===== */
+#tab-map{position:relative;overflow:hidden;}
+#map-canvas{width:100%;height:100%;background:var(--bg);}
+#map-tools{
+  position:absolute;top:14px;left:14px;
+  display:flex;flex-direction:column;gap:8px;z-index:10;
+}
+.map-tool-btn{
+  width:36px;height:36px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1rem;transition:all .15s;color:var(--text);
+}
+.map-tool-btn:hover,.map-tool-btn.active{border-color:var(--accent);color:var(--accent);}
+#map-info{
+  position:absolute;bottom:14px;left:14px;right:14px;
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:10px 16px;display:flex;gap:24px;align-items:center;z-index:10;
+}
+#map-info .mi{font-family:var(--mono);font-size:.65rem;}
+#map-info .mi span{color:var(--muted);}
+
+/* ===== VISION TAB ===== */
+#tab-vision{overflow-y:auto;padding:16px;gap:14px;flex-direction:column;}
+#vision-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+.vision-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:14px;transition:border-color .2s;
+}
+.vision-card:hover{border-color:var(--accent);}
+.vision-card .vc-label{font-weight:700;font-size:.85rem;}
+.vision-card .vc-conf{font-family:var(--mono);font-size:.7rem;color:var(--accent);margin-top:2px;}
+.vision-card .vc-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;}
+.vision-card .vc-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s;}
+.vision-card .vc-meta{font-size:.65rem;color:var(--muted);margin-top:6px;font-family:var(--mono);}
+#vis-controls{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+#vis-controls label{font-size:.75rem;color:var(--muted);}
+#vis-controls input[type=range]{accent-color:var(--accent);}
+#detection-log{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:12px;max-height:200px;overflow-y:auto;margin-top:4px;
+}
+.log-line{font-family:var(--mono);font-size:.65rem;color:var(--muted);padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.log-line span{color:var(--accent);}
+
+/* ===== HISTORY TAB ===== */
+#tab-history{overflow-y:auto;padding:16px;flex-direction:column;gap:14px;}
+.hist-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px;}
+.hist-stat-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+.hist-stat-card .hsv{font-size:1.8rem;font-weight:800;color:var(--accent);}
+.hist-stat-card .hsl{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.session-list{display:flex;flex-direction:column;gap:10px;}
+.session-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:14px;display:flex;align-items:center;gap:16px;
+}
+.session-card .s-num{font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--accent2);min-width:36px;}
+.session-card .s-info{flex:1;}
+.session-card .s-date{font-weight:700;font-size:.82rem;}
+.session-card .s-meta{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-top:3px;}
+.session-card .s-tags{display:flex;gap:6px;margin-top:6px;}
+.s-badge{font-family:var(--mono);font-size:.6rem;padding:2px 7px;border-radius:4px;background:rgba(0,229,255,.1);color:var(--accent);}
+
+/* ===== ADMIN TAB ===== */
+#tab-admin{overflow-y:auto;padding:16px;flex-direction:column;gap:14px;}
+#admin-lock{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;}
+#admin-lock .lock-icon{font-size:3rem;}
+#admin-lock input{
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:.85rem;padding:10px 16px;border-radius:8px;width:280px;
+}
+#admin-lock input:focus{outline:none;border-color:var(--accent);}
+#admin-panel{display:none;flex-direction:column;gap:14px;}
+.admin-section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.admin-section h3{font-size:.82rem;font-weight:700;margin-bottom:12px;color:var(--accent);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
+.ctrl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.ctrl-btn{
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--font);font-weight:700;font-size:.8rem;padding:10px;
+  border-radius:8px;cursor:pointer;transition:all .2s;text-align:center;
+}
+.ctrl-btn:hover{border-color:var(--accent);color:var(--accent);}
+.ctrl-btn.go{background:rgba(16,185,129,.15);border-color:var(--green);color:var(--green);}
+.ctrl-btn.stop-btn{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red);}
+.dpad{display:grid;grid-template-columns:repeat(3,46px);gap:6px;margin:0 auto;width:fit-content;}
+.dpad-btn{
+  width:46px;height:46px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;transition:all .15s;
+}
+.dpad-btn:hover{border-color:var(--accent);background:rgba(0,229,255,.1);}
+.dpad-btn:active{transform:scale(.92);}
+.dpad-empty{width:46px;height:46px;}
+.form-row{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.form-row label{font-size:.75rem;color:var(--muted);width:140px;flex-shrink:0;}
+.form-row input,.form-row select{
+  flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:.75rem;padding:6px 10px;border-radius:6px;
+}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--accent);}
+.form-row input[type=range]{padding:0;}
+
+/* ===== ZONES SIDEBAR PANEL ===== */
+#right-panel{
+  width:260px;flex-shrink:0;
+  background:var(--panel);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#right-panel.hidden{display:none;}
+.rp-header{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.rp-header h2{font-size:.85rem;font-weight:700;color:var(--accent);}
+.rp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;}
+.rp-body{flex:1;overflow-y:auto;padding:12px;}
+.zone-item{
+  background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;
+}
+.zone-item:hover{border-color:var(--accent);}
+.zone-item .z-name{font-weight:700;font-size:.8rem;}
+.zone-item .z-meta{font-size:.65rem;color:var(--muted);font-family:var(--mono);margin-top:3px;}
+.zone-item .z-status{
+  display:inline-block;margin-top:5px;font-family:var(--mono);font-size:.58rem;
+  padding:1px 7px;border-radius:3px;
+}
+.z-status.clean{background:rgba(16,185,129,.15);color:var(--green);}
+.z-status.pending{background:rgba(245,158,11,.15);color:var(--accent3);}
+.z-status.active{background:rgba(0,229,255,.1);color:var(--accent);}
+.sched-item{
+  background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;margin-bottom:8px;
+}
+.sched-item .s-time{font-family:var(--mono);font-size:.75rem;color:var(--accent);font-weight:700;}
+.sched-item .s-zone{font-size:.78rem;margin-top:2px;}
+.sched-item .s-repeat{font-size:.62rem;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.path-item{
+  background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;margin-bottom:8px;
+}
+.path-item .p-name{font-weight:700;font-size:.8rem;}
+.path-item .p-nodes{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-top:3px;}
+
+/* FLOATING CAMERA PANEL */
+#cam-panel{
+  position:fixed;bottom:80px;right:20px;
+  width:340px;background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;z-index:200;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+  display:none;resize:both;
+}
+#cam-panel.visible{display:block;}
+#cam-panel-header{
+  padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;cursor:move;user-select:none;
+}
+#cam-panel-header .cp-title{font-size:.8rem;font-weight:700;flex:1;}
+#cam-panel-header button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 5px;}
+#cam-panel-header button:hover{color:var(--text);}
+#cam-tabs{display:flex;border-bottom:1px solid var(--border);}
+.cam-tab{
+  flex:1;padding:7px;text-align:center;font-size:.7rem;font-weight:600;
+  cursor:pointer;color:var(--muted);transition:.15s;
+}
+.cam-tab.active{color:var(--accent);border-bottom:2px solid var(--accent);}
+.cam-source{display:none;padding:10px;}
+.cam-source.active{display:block;}
+#webcam-video{width:100%;border-radius:6px;display:block;background:#000;max-height:200px;object-fit:cover;}
+#webcam-canvas{position:absolute;top:0;left:0;pointer-events:none;}
+.cam-source-wrap{position:relative;}
+#cam-status{font-family:var(--mono);font-size:.65rem;margin-top:6px;color:var(--muted);}
+.cam-url-row{display:flex;gap:6px;margin-bottom:8px;}
+.cam-url-row input{
+  flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--mono);font-size:.68rem;padding:5px 8px;border-radius:5px;
+}
+.cam-url-row input:focus{outline:none;border-color:var(--accent);}
+.cam-url-row button{
+  background:var(--accent);color:#000;border:none;font-family:var(--font);
+  font-weight:700;font-size:.7rem;padding:5px 10px;border-radius:5px;cursor:pointer;
+}
+#cam-det-tags{display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;border-top:1px solid var(--border);}
+.det-tag{font-family:var(--mono);font-size:.6rem;padding:2px 8px;border-radius:4px;background:rgba(0,229,255,.1);color:var(--accent);}
+.cam-meta-row{display:flex;gap:10px;padding:5px 10px;font-family:var(--mono);font-size:.62rem;color:var(--muted);border-top:1px solid var(--border);}
+.snap-btn{
+  background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  font-family:var(--font);font-size:.7rem;font-weight:600;padding:4px 10px;
+  border-radius:5px;cursor:pointer;
+}
+.snap-btn:hover{border-color:var(--accent);}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+
+/* Notification toast */
+#toast{
+  position:fixed;top:60px;right:16px;z-index:999;
+  font-family:var(--mono);font-size:.72rem;
+  background:var(--panel2);border:1px solid var(--accent);color:var(--accent);
+  padding:8px 16px;border-radius:8px;
+  opacity:0;transform:translateY(-8px);transition:all .3s;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateY(0);}
+
+/* Right panel sub-tabs */
+.rp-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:10px;}
+.rp-tab{flex:1;text-align:center;padding:7px;font-size:.7rem;font-weight:600;cursor:pointer;color:var(--muted);transition:.15s;}
+.rp-tab.active{color:var(--accent);border-bottom:2px solid var(--accent);}
+.rp-subtab{display:none;}
+.rp-subtab.active{display:block;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">🫧 OmniScrub <span>v2.4</span></div>
+  <div class="status-row">
+    <div class="status-pill online"><div class="dot"></div> Arduino Connected</div>
+    <div class="status-pill warn"><div class="dot"></div> Battery 67%</div>
+    <div class="status-pill online"><div class="dot"></div> Camera Active</div>
+  </div>
+  <div class="toolbar-btns">
+    <button class="tbtn primary" onclick="startScrub()">▶ Start Scrub</button>
+    <button class="tbtn danger" onclick="stopScrub()">⏹ Stop</button>
+    <button class="tbtn" onclick="toggleCamPanel()">📹 Camera</button>
+    <button class="tbtn" onclick="toggleRightPanel()">⊞ Zones</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR NAV -->
+  <div id="sidebar">
+    <div class="nav-section">Navigation</div>
+    <div class="nav-item active" onclick="showTab('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">⊞</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showTab('map')" id="nav-map">
+      <span class="nav-icon">🗺</span> Map
+    </div>
+    <div class="nav-item" onclick="showTab('vision')" id="nav-vision">
+      <span class="nav-icon">👁</span> Vision <span class="badge" id="vision-badge">3</span>
+    </div>
+    <div class="nav-item" onclick="showTab('history')" id="nav-history">
+      <span class="nav-icon">📋</span> History
+    </div>
+    <div class="nav-item" onclick="showTab('admin')" id="nav-admin">
+      <span class="nav-icon">⚙</span> Admin
+    </div>
+
+    <div class="bot-summary">
+      <div class="bot-card">
+        <div class="name" id="bot-name-display">SCRUBBOT-01</div>
+        <div class="stats">
+          <div class="stat">Mode: <b id="bot-mode">IDLE</b></div>
+          <div class="stat">Speed: <b id="bot-speed-disp">50%</b></div>
+          <div class="stat">Area: <b id="bot-area">0 m²</b></div>
+          <div class="stat">Uptime: <b id="bot-uptime">00:00</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ===== DASHBOARD TAB ===== -->
+    <div class="tab-pane active" id="tab-dashboard">
+
+      <!-- Stat cards row -->
+      <div class="dash-row r4">
+        <div class="dcard">
+          <div class="card-title">🧹 Area Cleaned</div>
+          <div class="big-val" id="d-area">0</div>
+          <div class="big-label">m² today</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-area-bar" style="width:0%"></div></div>
+          <div class="delta up" id="d-area-delta">▲ 0% of target</div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🔋 Battery</div>
+          <div class="big-val" id="d-battery">67</div>
+          <div class="big-label">% remaining</div>
+          <div class="prog-bar"><div class="prog-fill warn" id="d-bat-bar" style="width:67%"></div></div>
+          <div class="delta" id="d-bat-eta">~2h 12m remaining</div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🚧 Obstacles</div>
+          <div class="big-val" id="d-obstacles">0</div>
+          <div class="big-label">detected today</div>
+          <div class="prog-bar"><div class="prog-fill danger" id="d-obs-bar" style="width:0%"></div></div>
+          <div class="delta down" id="d-obs-delta">0 avoided, 0 errors</div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">⏱ Session Time</div>
+          <div class="big-val" id="d-session">00:00</div>
+          <div class="big-label">current session</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-ses-bar" style="width:0%"></div></div>
+          <div class="delta" id="d-ses-eta">Not running</div>
+        </div>
+      </div>
+
+      <!-- Main: minimap + camera -->
+      <div class="dash-row r-main">
+        <div class="dcard">
+          <div class="card-title">🗺 Live Floor Map</div>
+          <div id="minimap-canvas"><canvas id="mini-canvas"></canvas></div>
+          <div style="display:flex;gap:10px;margin-top:8px;font-family:var(--mono);font-size:.62rem;color:var(--muted);">
+            <span>🟦 Bot</span><span>🟩 Clean</span><span>🟥 Obstacle</span><span>⬜ Pending</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="dcard" style="flex:1;">
+            <div class="card-title" style="justify-content:space-between;">
+              📹 Camera Feed
+              <button class="snap-btn" onclick="snapDashCam()">📸 Snap</button>
+            </div>
+            <div id="dash-cam-wrap">
+              <div class="cam-placeholder" id="dash-cam-placeholder">
+                <div>📷 Camera not active</div>
+                <button onclick="startDashCam()">Enable Camera</button>
+              </div>
+              <video id="dash-cam-video" autoplay muted playsinline style="display:none;width:100%;height:100%;object-fit:cover;"></video>
+              <canvas id="dash-cam-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;"></canvas>
+              <div class="cam-overlay">
+                <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+                <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+                <div class="cam-label" id="dash-cam-label">WEBCAM</div>
+                <div class="cam-fps" id="dash-cam-fps">-- FPS</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System health + sensors + activity -->
+      <div class="dash-row r3">
+        <div class="dcard">
+          <div class="card-title">💻 System Health</div>
+          <div class="health-grid">
+            <div class="health-item"><div class="h-label">CPU</div><div class="h-val ok" id="h-cpu">12%</div></div>
+            <div class="health-item"><div class="h-label">RAM</div><div class="h-val ok" id="h-ram">38%</div></div>
+            <div class="health-item"><div class="h-label">Temp</div><div class="h-val warn" id="h-temp">41°C</div></div>
+            <div class="health-item"><div class="h-label">WiFi</div><div class="h-val ok" id="h-wifi">-48dBm</div></div>
+            <div class="health-item"><div class="h-label">Motor L</div><div class="h-val ok" id="h-motorl">OK</div></div>
+            <div class="health-item"><div class="h-label">Motor R</div><div class="h-val ok" id="h-motorr">OK</div></div>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">📡 Sensors</div>
+          <div class="sensor-list">
+            <div class="sensor-row"><div class="s-name">Front US</div><div class="s-bar"><div class="s-fill" id="s-front" style="width:80%"></div></div><div class="s-val" id="sv-front">24cm</div></div>
+            <div class="sensor-row"><div class="s-name">Left US</div><div class="s-bar"><div class="s-fill" id="s-left" style="width:55%"></div></div><div class="s-val" id="sv-left">18cm</div></div>
+            <div class="sensor-row"><div class="s-name">Right US</div><div class="s-bar"><div class="s-fill" id="s-right" style="width:90%"></div></div><div class="s-val" id="sv-right">30cm</div></div>
+            <div class="sensor-row"><div class="s-name">IR Floor</div><div class="s-bar"><div class="s-fill" id="s-ir" style="width:100%;background:var(--green)"></div></div><div class="s-val" id="sv-ir">CLEAR</div></div>
+            <div class="sensor-row"><div class="s-name">Gyro Z</div><div class="s-bar"><div class="s-fill" id="s-gyro" style="width:50%;background:var(--accent2)"></div></div><div class="s-val" id="sv-gyro">0.1°</div></div>
+            <div class="sensor-row"><div class="s-name">Brush RPM</div><div class="s-bar"><div class="s-fill" id="s-brush" style="width:0%"></div></div><div class="s-val" id="sv-brush">0</div></div>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">📰 Activity Feed</div>
+          <div class="activity-feed" id="activity-feed">
+            <div class="activity-item"><span class="a-icon">🔵</span><span class="a-time">Now</span><span class="a-text">System online, awaiting command</span><span class="a-tag info">INFO</span></div>
+            <div class="activity-item"><span class="a-icon">🔋</span><span class="a-time">0:01</span><span class="a-text">Battery check: 67% — sufficient</span><span class="a-tag ok">OK</span></div>
+            <div class="activity-item"><span class="a-icon">📡</span><span class="a-time">0:02</span><span class="a-text">All 5 sensors calibrated</span><span class="a-tag ok">OK</span></div>
+            <div class="activity-item"><span class="a-icon">🗺</span><span class="a-time">0:03</span><span class="a-text">Floor map loaded: Building A</span><span class="a-tag info">INFO</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone status row -->
+      <div class="dash-row r4">
+        <div class="dcard">
+          <div class="card-title">🏢 Room A</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--green)">Clean</div>
+          <div class="big-label">Last: 2h ago</div>
+          <div class="prog-bar"><div class="prog-fill" style="width:100%;background:var(--green)"></div></div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🏢 Room B</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--accent3)">Pending</div>
+          <div class="big-label">Scheduled: 3:00 PM</div>
+          <div class="prog-bar"><div class="prog-fill warn" style="width:40%"></div></div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🚪 Hallway</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--accent)">Active</div>
+          <div class="big-label">Bot cleaning now</div>
+          <div class="prog-bar"><div class="prog-fill" style="width:60%"></div></div>
+        </div>
+        <div class="dcard">
+          <div class="card-title">🍽 Cafeteria</div>
+          <div class="big-val" style="font-size:1.4rem;color:var(--red)">Dirty</div>
+          <div class="big-label">Needs cleaning</div>
+          <div class="prog-bar"><div class="prog-fill danger" style="width:5%"></div></div>
+        </div>
+      </div>
+
+    </div><!-- /dashboard -->
+
+    <!-- ===== MAP TAB ===== -->
+    <div class="tab-pane" id="tab-map">
+      <canvas id="map-canvas"></canvas>
+      <div id="map-tools">
+        <div class="map-tool-btn active" title="Select" onclick="setMapTool('select')">↖</div>
+        <div class="map-tool-btn" title="Add Zone" onclick="setMapTool('zone')">⬜</div>
+        <div class="map-tool-btn" title="Path" onclick="setMapTool('path')">〰</div>
+        <div class="map-tool-btn" title="Obstacle" onclick="setMapTool('obstacle')">🚧</div>
+        <div class="map-tool-btn" title="Scan" onclick="runScan()">📡</div>
+        <div class="map-tool-btn" title="Reset" onclick="resetMap()">↺</div>
+      </div>
+      <div id="map-info">
+        <div class="mi">Bot: <span id="mi-pos">--</span></div>
+        <div class="mi">Heading: <span id="mi-heading">--</span></div>
+        <div class="mi">Speed: <span id="mi-speed">--</span></div>
+        <div class="mi">Coverage: <span id="mi-coverage">0%</span></div>
+        <div class="mi">Zones: <span id="mi-zones">6</span></div>
+        <div class="mi">Tool: <span id="mi-tool">SELECT</span></div>
+      </div>
+    </div>
+
+    <!-- ===== VISION TAB ===== -->
+    <div class="tab-pane" id="tab-vision">
+      <div id="vis-controls">
+        <span style="font-size:.8rem;font-weight:700;">Detection Threshold:</span>
+        <input type="range" min="0" max="100" value="50" id="vis-thresh" oninput="filterDetections(this.value)"/>
+        <span id="vis-thresh-val" style="font-family:var(--mono);font-size:.7rem;">50%</span>
+        <button class="tbtn" onclick="clearDetections()">🗑 Clear</button>
+        <button class="tbtn primary" onclick="refreshDetections()">⟳ Refresh</button>
+      </div>
+      <div id="vision-grid"></div>
+      <div class="card-title" style="margin-top:14px;font-size:.65rem;font-family:var(--mono);">📋 Detection Log</div>
+      <div id="detection-log"></div>
+    </div>
+
+    <!-- ===== HISTORY TAB ===== -->
+    <div class="tab-pane" id="tab-history">
+      <div class="hist-stats">
+        <div class="hist-stat-card"><div class="hsv" id="h-sessions">0</div><div class="hsl">Total Sessions</div></div>
+        <div class="hist-stat-card"><div class="hsv" id="h-total-area">0m²</div><div class="hsl">Total Area</div></div>
+        <div class="hist-stat-card"><div class="hsv" id="h-total-time">0m</div><div class="hsl">Total Runtime</div></div>
+        <div class="hist-stat-card"><div class="hsv" id="h-total-obs">0</div><div class="hsl">Obstacles Hit</div></div>
+      </div>
+      <div class="session-list" id="session-list">
+        <div style="color:var(--muted);font-size:.8rem;padding:20px;text-align:center;">No sessions yet. Start a scrub to record history.</div>
+      </div>
+    </div>
+
+    <!-- ===== ADMIN TAB ===== -->
+    <div class="tab-pane" id="tab-admin">
+      <div id="admin-lock">
+        <div class="lock-icon">🔒</div>
+        <div style="font-weight:700;font-size:1rem;">Admin Access Required</div>
+        <div style="color:var(--muted);font-size:.8rem;">Enter password to continue</div>
+        <input type="password" id="admin-pw" placeholder="Enter admin password…" onkeydown="if(event.key==='Enter')unlockAdmin()"/>
+        <button class="tbtn primary" onclick="unlockAdmin()">Unlock</button>
+        <div id="admin-err" style="color:var(--red);font-size:.75rem;display:none;">Incorrect password</div>
+      </div>
+      <div id="admin-panel">
+        <div class="admin-section">
+          <h3>⚙ Bot Controls</h3>
+          <div class="ctrl-grid">
+            <div class="ctrl-btn go" onclick="startScrub()">▶ Start</div>
+            <div class="ctrl-btn stop-btn" onclick="stopScrub()">⏹ Stop</div>
+            <div class="ctrl-btn" onclick="pauseScrub()">⏸ Pause</div>
+            <div class="ctrl-btn" onclick="homeBot()">🏠 Home</div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>🕹 Manual Drive</h3>
+          <div class="dpad">
+            <div class="dpad-empty"></div>
+            <div class="dpad-btn" onclick="driveBot('forward')">▲</div>
+            <div class="dpad-empty"></div>
+            <div class="dpad-btn" onclick="driveBot('left')">◀</div>
+            <div class="dpad-btn" onclick="driveBot('stop')">⏹</div>
+            <div class="dpad-btn" onclick="driveBot('right')">▶</div>
+            <div class="dpad-empty"></div>
+            <div class="dpad-btn" onclick="driveBot('backward')">▼</div>
+            <div class="dpad-empty"></div>
+          </div>
+        </div>
+        <div class="admin-section">
+          <h3>🛠 Settings</h3>
+          <div class="form-row"><label>Bot Name</label><input type="text" id="bot-name-input" value="SCRUBBOT-01" onchange="updateBotName()"/></div>
+          <div class="form-row"><label>Speed (%)</label><input type="range" min="10" max="100" value="50" id="speed-slider" oninput="updateSpeed(this.value)"/><span id="speed-val" style="font-family:var(--mono);font-size:.72rem;width:35px;">50%</span></div>
+          <div class="form-row"><label>Obstacle Distance (cm)</label><input type="number" value="20" min="5" max="60" id="obs-dist"/></div>
+          <div class="form-row"><label>Arduino COM Port</label><input type="text" value="COM3" id="com-port" placeholder="COM3 or /dev/ttyUSB0"/></div>
+          <div class="form-row"><label>New Password</label><input type="password" id="new-pw" placeholder="Leave blank to keep current"/></div>
+          <button class="tbtn primary" onclick="saveSettings()">💾 Save Settings</button>
+          <button class="tbtn danger" onclick="lockAdmin()" style="margin-left:8px;">🔒 Lock</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- RIGHT PANEL -->
+  <div id="right-panel" class="hidden">
+    <div class="rp-header">
+      <h2>Zone Manager</h2>
+      <button class="rp-close" onclick="toggleRightPanel()">✕</button>
+    </div>
+    <div class="rp-body">
+      <div class="rp-tabs">
+        <div class="rp-tab active" onclick="showRpTab('zones')">Zones</div>
+        <div class="rp-tab" onclick="showRpTab('schedule')">Schedule</div>
+        <div class="rp-tab" onclick="showRpTab('paths')">Paths</div>
+      </div>
+      <div class="rp-subtab active" id="rp-zones">
+        <div class="zone-item"><div class="z-name">Room A</div><div class="z-meta">42m² · Priority: High</div><div class="z-status clean">CLEAN</div></div>
+        <div class="zone-item"><div class="z-name">Room B</div><div class="z-meta">38m² · Priority: Medium</div><div class="z-status pending">PENDING</div></div>
+        <div class="zone-item"><div class="z-name">Hallway</div><div class="z-meta">20m² · Priority: High</div><div class="z-status active">ACTIVE</div></div>
+        <div class="zone-item"><div class="z-name">Cafeteria</div><div class="z-meta">85m² · Priority: High</div><div class="z-status pending">PENDING</div></div>
+        <div class="zone-item"><div class="z-name">Office</div><div class="z-meta">30m² · Priority: Low</div><div class="z-status clean">CLEAN</div></div>
+        <div class="zone-item"><div class="z-name">Storage</div><div class="z-meta">15m² · Priority: Low</div><div class="z-status clean">CLEAN</div></div>
+        <button class="tbtn" style="width:100%;margin-top:8px;" onclick="addZone()">+ Add Zone</button>
+      </div>
+      <div class="rp-subtab" id="rp-schedule">
+        <div class="sched-item"><div class="s-time">08:00 AM</div><div class="s-zone">Room A + Hallway</div><div class="s-repeat">Repeat: Weekdays</div></div>
+        <div class="sched-item"><div class="s-time">12:30 PM</div><div class="s-zone">Cafeteria</div><div class="s-repeat">Repeat: Daily</div></div>
+        <div class="sched-item"><div class="s-time">03:00 PM</div><div class="s-zone">Room B + Office</div><div class="s-repeat">Repeat: Mon/Wed/Fri</div></div>
+        <div class="sched-item"><div class="s-time">10:00 PM</div><div class="s-zone">Full Building Sweep</div><div class="s-repeat">Repeat: Weekly (Fri)</div></div>
+        <button class="tbtn" style="width:100%;margin-top:8px;">+ Add Schedule</button>
+      </div>
+      <div class="rp-subtab" id="rp-paths">
+        <div class="path-item"><div class="p-name">Path Alpha</div><div class="p-nodes">14 nodes · 68m</div></div>
+        <div class="path-item"><div class="p-name">Path Beta</div><div class="p-nodes">9 nodes · 42m</div></div>
+        <div class="path-item"><div class="p-name">Emergency Exit</div><div class="p-nodes">5 nodes · 18m</div></div>
+        <button class="tbtn" style="width:100%;margin-top:8px;">+ Record Path</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- FLOATING CAMERA PANEL -->
+<div id="cam-panel">
+  <div id="cam-panel-header">
+    <span>📹</span>
+    <span class="cp-title">Live Camera</span>
+    <button onclick="expandCamPanel()" title="Expand">⤢</button>
+    <button onclick="toggleCamPanel()" title="Close">✕</button>
+  </div>
+  <div id="cam-tabs">
+    <div class="cam-tab active" onclick="showCamTab('webcam')">💻 Webcam</div>
+    <div class="cam-tab" onclick="showCamTab('arduino')">🔌 Arduino</div>
+    <div class="cam-tab" onclick="showCamTab('mjpeg')">🌐 MJPEG</div>
+  </div>
+  <div class="cam-source active" id="csrc-webcam">
+    <div class="cam-source-wrap">
+      <video id="webcam-video" autoplay muted playsinline></video>
+      <canvas id="webcam-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+    </div>
+    <div id="cam-status">Click to start webcam…</div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="tbtn" onclick="startWebcam()" style="flex:1;">▶ Start</button>
+      <button class="snap-btn" onclick="snapWebcam()">📸 Snap</button>
+    </div>
+  </div>
+  <div class="cam-source" id="csrc-arduino">
+    <div class="cam-url-row">
+      <input type="text" id="arduino-url" placeholder="http://192.168.1.x/cam"/>
+      <button onclick="connectArduinoCam()">Connect</button>
+    </div>
+    <img id="arduino-stream" style="width:100%;border-radius:6px;display:none;" alt="Arduino Stream"/>
+    <div id="arduino-status" style="font-family:var(--mono);font-size:.65rem;color:var(--muted);">Enter Arduino stream URL above</div>
+  </div>
+  <div class="cam-source" id="csrc-mjpeg">
+    <div class="cam-url-row">
+      <input type="text" id="mjpeg-url" placeholder="http://192.168.1.x:8080/stream"/>
+      <button onclick="connectMjpeg()">Connect</button>
+    </div>
+    <img id="mjpeg-stream" style="width:100%;border-radius:6px;display:none;" alt="MJPEG Stream"/>
+    <div id="mjpeg-status" style="font-family:var(--mono);font-size:.65rem;color:var(--muted);">Enter MJPEG stream URL above</div>
+  </div>
+  <div class="cam-meta-row">
+    <span id="cam-res">--</span>
+    <span id="cam-fps-float">-- fps</span>
+    <span id="cam-src-label">No source</span>
+  </div>
+  <div id="cam-det-tags">
+    <span style="font-size:.62rem;color:var(--muted);font-family:var(--mono);">No detections</span>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let scrubRunning = false;
+let scrubStartTime = null;
+let sessionTimer = null;
+let botX = 0.5, botY = 0.5, botAngle = 0;
+let botSpeed = 50;
+let adminUnlocked = false;
+let adminPassword = 'ethospathoslogos';
+let botName = 'SCRUBBOT-01';
+let sessionCount = 0;
+let totalArea = 0, totalTime = 0, totalObs = 0;
+let currentTool = 'select';
+let camStream = null;
+let dashCamStream = null;
+let dashFpsInterval = null;
+let dashFrameCount = 0;
+let dashLastFpsTime = Date.now();
+
+const detections = [
+  {label:'Person',conf:87,x:0.3,y:0.4,w:0.1,h:0.25},
+  {label:'Chair',conf:92,x:0.6,y:0.7,w:0.08,h:0.12},
+  {label:'Desk',conf:78,x:0.5,y:0.6,w:0.15,h:0.1},
+  {label:'Door',conf:95,x:0.1,y:0.5,w:0.05,h:0.2},
+  {label:'Backpack',conf:64,x:0.75,y:0.8,w:0.07,h:0.09},
+];
+
+// ============================================================
+// MAP
+// ============================================================
+const rooms = [
+  {name:'Room A',    x:0.05, y:0.05, w:0.3,  h:0.4,  status:'clean'},
+  {name:'Room B',    x:0.4,  y:0.05, w:0.25, h:0.35, status:'pending'},
+  {name:'Room C',    x:0.7,  y:0.05, w:0.25, h:0.35, status:'clean'},
+  {name:'Hallway',   x:0.05, y:0.5,  w:0.9,  h:0.12, status:'active'},
+  {name:'Cafeteria', x:0.05, y:0.65, w:0.4,  h:0.3,  status:'pending'},
+  {name:'Office',    x:0.5,  y:0.65, w:0.22, h:0.3,  status:'clean'},
+  {name:'Storage',   x:0.77, y:0.65, w:0.18, h:0.3,  status:'clean'},
+];
+
+const obstacles = [
+  {x:0.2, y:0.25},{x:0.55,y:0.15},{x:0.8,y:0.2},{x:0.15,y:0.72},{x:0.3,y:0.8}
+];
+
+function drawMap(canvas, small) {
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(0,0,W,H);
+
+  const colors = {
+    clean:'rgba(16,185,129,0.12)', pending:'rgba(245,158,11,0.1)',
+    active:'rgba(0,229,255,0.12)', dirty:'rgba(239,68,68,0.1)'
+  };
+  const borders = {
+    clean:'#10b981', pending:'#f59e0b', active:'#00e5ff', dirty:'#ef4444'
+  };
+
+  rooms.forEach(r => {
+    const rx=r.x*W, ry=r.y*H, rw=r.w*W, rh=r.h*H;
+    ctx.fillStyle = colors[r.status]||'rgba(255,255,255,0.05)';
+    ctx.fillRect(rx,ry,rw,rh);
+    ctx.strokeStyle = borders[r.status]||'#1e2a3a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(rx,ry,rw,rh);
+    if(!small){
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '600 11px Syne, sans-serif';
+      ctx.fillText(r.name, rx+6, ry+16);
+    }
+  });
+
+  obstacles.forEach(o => {
+    ctx.fillStyle = 'rgba(239,68,68,0.6)';
+    ctx.beginPath();
+    ctx.arc(o.x*W, o.y*H, small?4:7, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Bot
+  const bx = botX*W, by = botY*H, br = small?6:10;
+  ctx.save(); ctx.translate(bx,by); ctx.rotate(botAngle);
+  ctx.fillStyle = '#00e5ff';
+  ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = small?8:14;
+  ctx.beginPath(); ctx.arc(0,0,br,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,-br); ctx.lineTo(0,-br-5); ctx.stroke();
+  ctx.shadowBlur=0; ctx.restore();
+}
+
+function initMap() {
+  const c = document.getElementById('map-canvas');
+  c.width = c.parentElement.clientWidth;
+  c.height = c.parentElement.clientHeight;
+  drawMap(c, false);
+}
+
+function drawMiniMap() {
+  const c = document.getElementById('mini-canvas');
+  const wrap = document.getElementById('minimap-canvas');
+  c.width = wrap.clientWidth;
+  c.height = 180;
+  drawMap(c, true);
+}
+
+function setMapTool(t) {
+  currentTool = t;
+  document.querySelectorAll('.map-tool-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('mi-tool').textContent = t.toUpperCase();
+}
+function runScan() { toast('📡 Scanning floor…'); setTimeout(()=>toast('✅ Scan complete — 6 zones mapped'),2000); }
+function resetMap() { botX=0.5;botY=0.5;botAngle=0; initMap(); }
+
+// ============================================================
+// TABS
+// ============================================================
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='map') setTimeout(initMap, 50);
+  if(name==='vision') refreshDetections();
+  if(name==='dashboard') setTimeout(drawMiniMap, 50);
+}
+
+function toggleRightPanel() {
+  document.getElementById('right-panel').classList.toggle('hidden');
+}
+
+function showRpTab(name) {
+  document.querySelectorAll('.rp-subtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.rp-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('rp-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ============================================================
+// SCRUB SESSION
+// ============================================================
+function startScrub() {
+  if(scrubRunning) return;
+  scrubRunning = true;
+  scrubStartTime = Date.now();
+  document.getElementById('bot-mode').textContent = 'RUNNING';
+  document.getElementById('d-ses-eta').textContent = 'Session running…';
+  sessionTimer = setInterval(updateSession, 1000);
+  logActivity('▶','Started scrub session','ok');
+  toast('▶ Scrub session started');
+  animateBot();
+}
+
+function stopScrub() {
+  if(!scrubRunning) return;
+  scrubRunning = false;
+  clearInterval(sessionTimer);
+  document.getElementById('bot-mode').textContent = 'IDLE';
+  document.getElementById('d-ses-eta').textContent = 'Session ended';
+  const dur = Math.floor((Date.now()-scrubStartTime)/1000);
+  const area = Math.floor(Math.random()*40+10);
+  logSession(dur, area, Math.floor(Math.random()*3));
+  logActivity('⏹','Scrub stopped — '+area+'m² cleaned','info');
+  toast('⏹ Session saved to history');
+}
+
+function pauseScrub() {
+  document.getElementById('bot-mode').textContent = 'PAUSED';
+  toast('⏸ Paused');
+}
+
+function homeBot() { toast('🏠 Returning to dock…'); document.getElementById('bot-mode').textContent='DOCKING'; }
+
+let animFrame = null;
+function animateBot() {
+  if(!scrubRunning) return;
+  botAngle += 0.02;
+  botX += Math.cos(botAngle) * 0.002;
+  botY += Math.sin(botAngle) * 0.001;
+  botX = Math.max(0.05, Math.min(0.95, botX));
+  botY = Math.max(0.05, Math.min(0.95, botY));
+  document.getElementById('mi-pos').textContent = Math.floor(botX*100)+','+Math.floor(botY*100);
+  document.getElementById('mi-heading').textContent = Math.floor(botAngle*57.3)%360+'°';
+  const activeTab = document.querySelector('.tab-pane.active');
+  if(activeTab && activeTab.id === 'tab-map') {
+    const c = document.getElementById('map-canvas');
+    drawMap(c, false);
+  }
+  if(activeTab && activeTab.id === 'tab-dashboard') drawMiniMap();
+  animFrame = requestAnimationFrame(animateBot);
+}
+
+function updateSession() {
+  const elapsed = Math.floor((Date.now()-scrubStartTime)/1000);
+  const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+  const s = String(elapsed%60).padStart(2,'0');
+  document.getElementById('d-session').textContent = m+':'+s;
+  document.getElementById('bot-uptime').textContent = m+':'+s;
+  const area = Math.floor(elapsed/10);
+  document.getElementById('d-area').textContent = area;
+  document.getElementById('d-area-bar').style.width = Math.min(area,100)+'%';
+  document.getElementById('bot-area').textContent = area+' m²';
+}
+
+function logSession(durSec, area, obs) {
+  sessionCount++;
+  totalArea += area;
+  totalTime += Math.floor(durSec/60);
+  totalObs += obs;
+  document.getElementById('h-sessions').textContent = sessionCount;
+  document.getElementById('h-total-area').textContent = totalArea+'m²';
+  document.getElementById('h-total-time').textContent = totalTime+'m';
+  document.getElementById('h-total-obs').textContent = totalObs;
+  const list = document.getElementById('session-list');
+  if(sessionCount===1) list.innerHTML='';
+  const m=Math.floor(durSec/60), s=durSec%60;
+  const now=new Date();
+  list.insertAdjacentHTML('afterbegin',`
+    <div class="session-card">
+      <div class="s-num">#${sessionCount}</div>
+      <div class="s-info">
+        <div class="s-date">${now.toLocaleDateString()} ${now.toLocaleTimeString()}</div>
+        <div class="s-meta">Duration: ${m}m ${s}s · Area: ${area}m² · Obstacles: ${obs}</div>
+        <div class="s-tags">
+          <span class="s-badge">${area}m²</span>
+          <span class="s-badge">${m}m ${s}s</span>
+          <span class="s-badge">${obs} obstacles</span>
+        </div>
+      </div>
+    </div>`);
+}
+
+// ============================================================
+// VISION
+// ============================================================
+function refreshDetections() {
+  const grid = document.getElementById('vision-grid');
+  grid.innerHTML='';
+  const thresh = parseInt(document.getElementById('vis-thresh').value);
+  const filtered = detections.filter(d=>d.conf>=thresh);
+  document.getElementById('vision-badge').textContent = filtered.length;
+  filtered.forEach(d=>{
+    grid.insertAdjacentHTML('beforeend',`
+      <div class="vision-card">
+        <div class="vc-label">${d.label}</div>
+        <div class="vc-conf">${d.conf}% confidence</div>
+        <div class="vc-bar"><div class="vc-fill" style="width:${d.conf}%"></div></div>
+        <div class="vc-meta">pos: (${Math.floor(d.x*100)},${Math.floor(d.y*100)}) · ${Math.floor(d.w*100)}×${Math.floor(d.h*100)}cm</div>
+      </div>`);
+  });
+  logDetection(filtered);
+  updateDetTags(filtered.map(d=>d.label));
+}
+
+function filterDetections(v) {
+  document.getElementById('vis-thresh-val').textContent = v+'%';
+  refreshDetections();
+}
+
+function clearDetections() {
+  document.getElementById('vision-grid').innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:10px;">Detections cleared</div>';
+  document.getElementById('cam-det-tags').innerHTML='<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono);">No detections</span>';
+}
+
+function logDetection(dets) {
+  const log = document.getElementById('detection-log');
+  const now = new Date().toLocaleTimeString();
+  dets.forEach(d=>{
+    log.insertAdjacentHTML('afterbegin',`<div class="log-line">[${now}] <span>${d.label}</span> — ${d.conf}% — pos(${Math.floor(d.x*100)},${Math.floor(d.y*100)})</div>`);
+  });
+}
+
+function updateDetTags(labels) {
+  const el = document.getElementById('cam-det-tags');
+  if(!labels.length){el.innerHTML='<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono);">No detections</span>';return;}
+  el.innerHTML = labels.map(l=>`<span class="det-tag">${l}</span>`).join('');
+}
+
+// ============================================================
+// ADMIN
+// ============================================================
+function unlockAdmin() {
+  const pw = document.getElementById('admin-pw').value;
+  if(pw===adminPassword){
+    adminUnlocked=true;
+    document.getElementById('admin-lock').style.display='none';
+    document.getElementById('admin-panel').style.display='flex';
+    toast('🔓 Admin unlocked');
+  } else {
+    document.getElementById('admin-err').style.display='block';
+    setTimeout(()=>document.getElementById('admin-err').style.display='none',2000);
+  }
+}
+
+function lockAdmin() {
+  adminUnlocked=false;
+  document.getElementById('admin-lock').style.display='flex';
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('admin-pw').value='';
+  toast('🔒 Admin locked');
+}
+
+function updateBotName() {
+  botName = document.getElementById('bot-name-input').value;
+  document.getElementById('bot-name-display').textContent = botName;
+}
+
+function updateSpeed(v) {
+  botSpeed = parseInt(v);
+  document.getElementById('speed-val').textContent = v+'%';
+  document.getElementById('bot-speed-disp').textContent = v+'%';
+  document.getElementById('mi-speed').textContent = v+'%';
+}
+
+function saveSettings() {
+  const np = document.getElementById('new-pw').value;
+  if(np.trim()) adminPassword = np.trim();
+  toast('💾 Settings saved');
+}
+
+function driveBot(dir) {
+  const moves = {forward:[0,-0.02],backward:[0,0.02],left:[-0.02,0],right:[0.02,0],stop:[0,0]};
+  const [dx,dy]=moves[dir]||[0,0];
+  botX=Math.max(0.05,Math.min(0.95,botX+dx));
+  botY=Math.max(0.05,Math.min(0.95,botY+dy));
+  document.getElementById('mi-pos').textContent=Math.floor(botX*100)+','+Math.floor(botY*100);
+  const activeTab=document.querySelector('.tab-pane.active');
+  if(activeTab&&activeTab.id==='tab-map'){const c=document.getElementById('map-canvas');drawMap(c,false);}
+  if(activeTab&&activeTab.id==='tab-dashboard')drawMiniMap();
+  toast('🕹 '+dir.toUpperCase());
+}
+
+// ============================================================
+// CAMERA — FLOATING PANEL
+// ============================================================
+function toggleCamPanel() {
+  const p = document.getElementById('cam-panel');
+  p.classList.toggle('visible');
+  if(p.classList.contains('visible')) startWebcam();
+}
+
+function expandCamPanel() {
+  const p = document.getElementById('cam-panel');
+  p.style.width = p.style.width==='500px'?'340px':'500px';
+}
+
+function showCamTab(t) {
+  document.querySelectorAll('.cam-source').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.cam-tab').forEach(s=>s.classList.remove('active'));
+  document.getElementById('csrc-'+t).classList.add('active');
+  event.target.classList.add('active');
+  document.getElementById('cam-src-label').textContent=t.toUpperCase();
+}
+
+async function startWebcam() {
+  const vid = document.getElementById('webcam-video');
+  const status = document.getElementById('cam-status');
+  if(vid.srcObject){return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    status.textContent='⚠ Camera API unavailable. Open via localhost or https://';
+    status.style.color='var(--red)'; return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480}}});
+    vid.srcObject = stream;
+    camStream = stream;
+    status.textContent='✅ Logitech webcam active';
+    status.style.color='var(--green)';
+    const t=stream.getVideoTracks()[0];
+    if(t){const s=t.getSettings();document.getElementById('cam-res').textContent=(s.width||'?')+'×'+(s.height||'?');}
+    document.getElementById('cam-src-label').textContent='WEBCAM';
+  } catch(e) {
+    const msgs={NotAllowedError:'Permission denied — click the camera icon in the address bar',NotFoundError:'No camera found',NotReadableError:'Camera in use by another app'};
+    status.textContent='⚠ '+(msgs[e.name]||e.message);
+    status.style.color='var(--red)';
+  }
+}
+
+function snapWebcam() {
+  const vid=document.getElementById('webcam-video');
+  if(!vid.srcObject){toast('⚠ No active stream');return;}
+  const c=document.createElement('canvas');c.width=vid.videoWidth;c.height=vid.videoHeight;
+  c.getContext('2d').drawImage(vid,0,0);
+  const a=document.createElement('a');a.download='omniscrub-snap-'+Date.now()+'.png';a.href=c.toDataURL();a.click();
+  toast('📸 Snapshot saved');
+}
+
+function connectArduinoCam() {
+  const url=document.getElementById('arduino-url').value.trim();
+  const img=document.getElementById('arduino-stream');
+  const st=document.getElementById('arduino-status');
+  if(!url){st.textContent='Enter a URL first';return;}
+  img.src=url;img.style.display='block';
+  st.textContent='Connecting to '+url+'…';
+  img.onload=()=>{st.textContent='✅ Arduino stream connected';st.style.color='var(--green)';};
+  img.onerror=()=>{st.textContent='⚠ Cannot reach '+url;st.style.color='var(--red)';};
+}
+
+function connectMjpeg() {
+  const url=document.getElementById('mjpeg-url').value.trim();
+  const img=document.getElementById('mjpeg-stream');
+  const st=document.getElementById('mjpeg-status');
+  if(!url){st.textContent='Enter a URL first';return;}
+  img.src=url;img.style.display='block';
+  img.onload=()=>{st.textContent='✅ MJPEG stream connected';st.style.color='var(--green)';};
+  img.onerror=()=>{st.textContent='⚠ Cannot reach '+url;st.style.color='var(--red)';};
+}
+
+// ============================================================
+// DASHBOARD CAMERA
+// ============================================================
+async function startDashCam() {
+  const vid=document.getElementById('dash-cam-video');
+  const ph=document.getElementById('dash-cam-placeholder');
+  const cnv=document.getElementById('dash-cam-canvas');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    toast('⚠ Camera unavailable — open via localhost or https://');return;
+  }
+  try {
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480}}});
+    vid.srcObject=stream;dashCamStream=stream;
+    ph.style.display='none';vid.style.display='block';cnv.style.display='block';
+    document.getElementById('dash-cam-label').textContent='WEBCAM';
+    const t=stream.getVideoTracks()[0];
+    if(t){const s=t.getSettings();document.getElementById('dash-cam-fps').textContent=(s.frameRate||'30')+' FPS';}
+    dashLastFpsTime=Date.now();dashFrameCount=0;
+    dashFpsInterval=setInterval(()=>{
+      dashFrameCount++;
+      const now=Date.now();
+      if(now-dashLastFpsTime>=2000){
+        const fps=Math.round(dashFrameCount*1000/(now-dashLastFpsTime));
+        document.getElementById('dash-cam-fps').textContent=fps+' FPS';
+        dashFrameCount=0;dashLastFpsTime=now;
+      }
+    },33);
+  } catch(e){
+    toast('⚠ Camera error: '+e.message);
+  }
+}
+
+function snapDashCam() {
+  const vid=document.getElementById('dash-cam-video');
+  if(!vid.srcObject){toast('⚠ Enable camera first');return;}
+  const c=document.createElement('canvas');c.width=vid.videoWidth;c.height=vid.videoHeight;
+  c.getContext('2d').drawImage(vid,0,0);
+  const a=document.createElement('a');a.download='omniscrub-dash-'+Date.now()+'.png';a.href=c.toDataURL();a.click();
+  toast('📸 Snapshot saved');
+}
+
+// ============================================================
+// DRAGGABLE CAM PANEL
+// ============================================================
+(function(){
+  const el=document.getElementById('cam-panel');
+  const hdr=document.getElementById('cam-panel-header');
+  let drag=false,ox=0,oy=0;
+  hdr.addEventListener('mousedown',e=>{drag=true;ox=e.clientX-el.offsetLeft;oy=e.clientY-el.offsetTop;});
+  document.addEventListener('mousemove',e=>{if(drag){el.style.left=(e.clientX-ox)+'px';el.style.top=(e.clientY-oy)+'px';el.style.bottom='auto';el.style.right='auto';}});
+  document.addEventListener('mouseup',()=>drag=false);
+})();
+
+// ============================================================
+// ACTIVITY LOG
+// ============================================================
+function logActivity(icon, text, type) {
+  const feed=document.getElementById('activity-feed');
+  const now=new Date();const t=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  feed.insertAdjacentHTML('afterbegin',`
+    <div class="activity-item">
+      <span class="a-icon">${icon}</span>
+      <span class="a-time">${t}</span>
+      <span class="a-text">${text}</span>
+      <span class="a-tag ${type||'info'}">${(type||'INFO').toUpperCase()}</span>
+    </div>`);
+}
+
+// ============================================================
+// SENSOR SIMULATION
+// ============================================================
+setInterval(()=>{
+  const sensors=[
+    {id:'s-front',vid:'sv-front',unit:'cm',min:5,max:40},
+    {id:'s-left',vid:'sv-left',unit:'cm',min:5,max:35},
+    {id:'s-right',vid:'sv-right',unit:'cm',min:5,max:40},
+  ];
+  sensors.forEach(s=>{
+    const v=Math.floor(Math.random()*s.max+s.min);
+    const pct=Math.min((v/s.max)*100,100);
+    const el=document.getElementById(s.id);
+    const vel=document.getElementById(s.vid);
+    if(el)el.style.width=pct+'%';
+    if(vel)vel.textContent=v+s.unit;
+  });
+  // Gyro
+  const g=(Math.random()*2-1).toFixed(1);
+  const gEl=document.getElementById('s-gyro');
+  const gVEl=document.getElementById('sv-gyro');
+  if(gEl)gEl.style.width=(Math.abs(parseFloat(g))/2*100+50)+'%';
+  if(gVEl)gVEl.textContent=g+'°';
+  // Brush
+  if(scrubRunning){
+    const rpm=Math.floor(Math.random()*200+800);
+    const bEl=document.getElementById('s-brush');const bVEl=document.getElementById('sv-brush');
+    if(bEl)bEl.style.width=(rpm/1200*100)+'%';if(bVEl)bVEl.textContent=rpm;
+  }
+  // System health flicker
+  document.getElementById('h-cpu').textContent=Math.floor(Math.random()*20+8)+'%';
+  document.getElementById('h-ram').textContent=Math.floor(Math.random()*10+33)+'%';
+  document.getElementById('h-temp').textContent=(Math.random()*5+39).toFixed(1)+'°C';
+},1500);
+
+// Battery drain
+setInterval(()=>{
+  const bEl=document.getElementById('d-battery');
+  const barEl=document.getElementById('d-bat-bar');
+  if(bEl&&scrubRunning){
+    let v=parseInt(bEl.textContent);
+    v=Math.max(0,v-1);
+    bEl.textContent=v;
+    if(barEl)barEl.style.width=v+'%';
+    if(v<20&&v%5===0) logActivity('🔋','Battery low: '+v+'%','warn');
+  }
+},30000);
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ============================================================
+// ZONE ACTIONS
+// ============================================================
+function addZone() { toast('➕ Click on map to place zone'); showTab('map'); setMapTool('zone'); }
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load',()=>{
+  setTimeout(drawMiniMap, 100);
+  refreshDetections();
+  // Simulate random activity
+  const events=[
+    ['🔵','Connected to Arduino Uno Q','info'],
+    ['📡','Sensor calibration complete','ok'],
+    ['🗺','Floor plan loaded: Building A — 6 zones','info'],
+    ['🔋','Battery: 67% — estimated 2h 12m','ok'],
+    ['👁','Vision system: 3 objects detected','info'],
+  ];
+  events.forEach((e,i)=>setTimeout(()=>logActivity(...e),(i+1)*1200));
+});
+
+window.addEventListener('resize',()=>{
+  const activeTab=document.querySelector('.tab-pane.active');
+  if(activeTab&&activeTab.id==='tab-map') initMap();
+  if(activeTab&&activeTab.id==='tab-dashboard') drawMiniMap();
+});
+</script>
+</body>
+</html>
