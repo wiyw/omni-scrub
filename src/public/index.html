@@ -177,6 +177,12 @@ select option{background:var(--panel);}
   <div class="toolbar-group">
     <button class="tool-btn" id="btnCamera" onclick="toggleCam()">📹 Live Camera</button>
   </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <input class="cam-url-input" id="arduinoIp" type="text" value="192.168.1.100" placeholder="192.168.1.100" style="width:120px;"/>
+    <button class="tool-btn" id="btnArduinoConn" onclick="connectArduino()">🔌 Connect</button>
+    <span id="arduinoStatus" style="font-family:var(--mono);font-size:.65rem;color:var(--muted);">Offline</span>
+  </div>
   <div class="scan-status">
     <div class="scan-dot done" id="scanDot"></div>
     <span id="scanText" style="font-family:var(--mono)">MAP READY</span>

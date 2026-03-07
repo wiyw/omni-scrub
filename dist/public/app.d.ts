@@ -155,4 +155,6 @@ declare function drawVisionOv(): void;
 declare function startVision(): void;
 declare function takeSnapshot(): void;
 declare function showCamErr(msg: string): void;
+declare function connectArduino(): void;
+declare function updateArduinoStatus(connected: boolean, ip?: string): void;
 //# sourceMappingURL=app.d.ts.map

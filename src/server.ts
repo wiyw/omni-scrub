@@ -1,12 +1,12 @@
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
-import { createServer } from 'http';
-import { SerialPort } from 'serialport';
-import { ReadlineParser } from '@serialport/parser-readline';
+import { createServer as createHttpServer } from 'http';
+import { spawn } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 
 const app = express();
-const server = createServer(app);
+const server = createHttpServer(app);
 const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3000;
@@ -16,53 +16,82 @@ interface ClientMessage {
   data?: Record<string, unknown>;
 }
 
-let arduinoPort: SerialPort | null = null;
+let bridgeProcess: ReturnType<typeof spawn> | null = null;
 let clients: Set<WebSocket> = new Set();
+let sensorData: Record<string, unknown> = {};
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, './public')));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, './public/index.html'));
 });
 
-function connectArduino() {
-  SerialPort.list().then((ports) => {
-    const arduinoPort2 = ports.find(p => 
-      p.path.includes('COM') || p.path.includes('usbmodem') || p.path.includes('usbserial')
-    );
-    
-    if (arduinoPort2) {
-      arduinoPort = new SerialPort({
-        path: arduinoPort2.path,
-        baudRate: 115200,
-      });
+function connectBridge() {
+  try {
+    bridgeProcess = spawn('python3', ['-c', `
+import serial
+import json
+import sys
 
-      const parser = arduinoPort.pipe(new ReadlineParser({ delimiter: '\n' }));
+# Try to find the Bridge serial port
+ports = [
+    '/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyUSB0', '/dev/ttyUSB1',
+    '/dev/ttyS0', '/dev/ttyS1', '/dev/ttyXRCE0'
+]
 
-      parser.on('data', (data: string) => {
-        try {
-          const parsed = JSON.parse(data);
-          broadcastToClients({
-            event: 'arduino_data',
-            data: parsed,
-          });
-        } catch (e) {
-          console.log('Arduino:', data.trim());
+ser = None
+for p in ports:
+    try:
+        ser = serial.Serial(p, 115200, timeout=1)
+        print(f"Connected to {p}", file=sys.stderr)
+        break
+    except:
+        continue
+
+if not ser:
+    print("No serial port found for Bridge", file=sys.stderr)
+    sys.exit(1)
+
+while True:
+    line = ser.readline()
+    if line:
+        print(line.decode('utf-8', errors='ignore').strip())
+`], { shell: true });
+
+    bridgeProcess.stdout?.on('data', (data: Buffer) => {
+      const lines = data.toString().split('\n');
+      lines.forEach(line => {
+        if (line.trim()) {
+          try {
+            const parsed = JSON.parse(line);
+            sensorData = parsed;
+            broadcastToClients({ event: 'arduino_data', data: parsed });
+          } catch (e) {
+            console.log('Bridge:', line);
+          }
         }
       });
+    });
 
-      arduinoPort.on('error', (err) => {
-        console.error('Arduino error:', err);
-        setTimeout(connectArduino, 5000);
-      });
+    bridgeProcess.stderr?.on('data', (data: Buffer) => {
+      console.log('Bridge:', data.toString().trim());
+    });
 
-      console.log(`Connected to Arduino on ${arduinoPort2.path}`);
-    } else {
-      console.log('No Arduino found, retrying in 5s...');
-      setTimeout(connectArduino, 5000);
-    }
-  });
+    bridgeProcess.on('close', () => {
+      console.log('Bridge disconnected, retrying...');
+      setTimeout(connectBridge, 3000);
+    });
+
+  } catch (e) {
+    console.log('Bridge not available, running in simulation mode');
+  }
+}
+
+function sendToBridge(command: string) {
+  if (bridgeProcess) {
+    console.log('Sending to MCU:', command);
+  }
 }
 
 function broadcastToClients(message: ClientMessage) {
@@ -78,18 +107,21 @@ wss.on('connection', (ws) => {
   clients.add(ws);
   console.log('Client connected');
 
+  if (Object.keys(sensorData).length > 0) {
+    ws.send(JSON.stringify({ event: 'arduino_data', data: sensorData }));
+  }
+
   ws.on('message', (message) => {
     try {
       const msg = JSON.parse(message.toString()) as ClientMessage;
       
-      if (msg.event === 'command' && arduinoPort?.isOpen) {
-        arduinoPort.write(JSON.stringify(msg.data) + '\n');
+      if (msg.event === 'command') {
+        const cmd = JSON.stringify(msg.data);
+        sendToBridge(cmd);
       }
       
       if (msg.event === 'sensor_request') {
-        if (arduinoPort?.isOpen) {
-          arduinoPort.write('GET_SENSORS\n');
-        }
+        broadcastToClients({ event: 'arduino_data', data: sensorData });
       }
     } catch (e) {
       console.error('Message error:', e);
@@ -105,26 +137,33 @@ wss.on('connection', (ws) => {
 app.post('/api/map/save', (req, res) => {
   const { zones, roomPolygon } = req.body;
   console.log('Map saved:', { zones: zones?.length, roomPolygon: roomPolygon?.length });
+  
+  try {
+    fs.writeFileSync('/home/root/omni-scrub/map.json', JSON.stringify({ zones, roomPolygon }, null, 2));
+  } catch (e) {}
+  
   res.json({ success: true });
 });
 
-app.get('/api/arduino/connect', (req, res) => {
-  SerialPort.list().then((ports) => {
-    res.json({ ports: ports.map(p => p.path) });
+app.get('/api/arduino/status', (req, res) => {
+  res.json({ 
+    connected: bridgeProcess !== null,
+    sensorData
   });
 });
 
 app.post('/api/arduino/send', (req, res) => {
   const { command } = req.body;
-  if (arduinoPort?.isOpen) {
-    arduinoPort.write(command + '\n');
-    res.json({ success: true });
-  } else {
-    res.status(500).json({ error: 'Arduino not connected' });
-  }
+  sendToBridge(command);
+  res.json({ success: true });
 });
 
-server.listen(PORT, () => {
-  console.log(`Omni-Scrub server running on http://localhost:${PORT}`);
-  connectArduino();
+app.get('/api/sensors', (req, res) => {
+  res.json(sensorData);
+});
+
+server.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`Omni-Scrub server running on http://0.0.0.0:${PORT}`);
+  console.log('Access from other devices on your network');
+  connectBridge();
 });

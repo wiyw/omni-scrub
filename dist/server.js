@@ -39,52 +39,83 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const ws_1 = require("ws");
 const http_1 = require("http");
-const serialport_1 = require("serialport");
-const parser_readline_1 = require("@serialport/parser-readline");
+const child_process_1 = require("child_process");
 const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
 const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
 const wss = new ws_1.WebSocketServer({ server });
 const PORT = process.env.PORT || 3000;
-let arduinoPort = null;
+let bridgeProcess = null;
 let clients = new Set();
+let sensorData = {};
 app.use(express_1.default.json());
-app.use(express_1.default.static(path.join(__dirname, '../public')));
+app.use(express_1.default.static(path.join(__dirname, './public')));
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
+    res.sendFile(path.join(__dirname, './public/index.html'));
 });
-function connectArduino() {
-    serialport_1.SerialPort.list().then((ports) => {
-        const arduinoPort2 = ports.find(p => p.path.includes('COM') || p.path.includes('usbmodem') || p.path.includes('usbserial'));
-        if (arduinoPort2) {
-            arduinoPort = new serialport_1.SerialPort({
-                path: arduinoPort2.path,
-                baudRate: 115200,
-            });
-            const parser = arduinoPort.pipe(new parser_readline_1.ReadlineParser({ delimiter: '\n' }));
-            parser.on('data', (data) => {
-                try {
-                    const parsed = JSON.parse(data);
-                    broadcastToClients({
-                        event: 'arduino_data',
-                        data: parsed,
-                    });
+function connectBridge() {
+    try {
+        bridgeProcess = (0, child_process_1.spawn)('python3', ['-c', `
+import serial
+import json
+import sys
+
+# Try to find the Bridge serial port
+ports = [
+    '/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyUSB0', '/dev/ttyUSB1',
+    '/dev/ttyS0', '/dev/ttyS1', '/dev/ttyXRCE0'
+]
+
+ser = None
+for p in ports:
+    try:
+        ser = serial.Serial(p, 115200, timeout=1)
+        print(f"Connected to {p}", file=sys.stderr)
+        break
+    except:
+        continue
+
+if not ser:
+    print("No serial port found for Bridge", file=sys.stderr)
+    sys.exit(1)
+
+while True:
+    line = ser.readline()
+    if line:
+        print(line.decode('utf-8', errors='ignore').strip())
+`], { shell: true });
+        bridgeProcess.stdout?.on('data', (data) => {
+            const lines = data.toString().split('\n');
+            lines.forEach(line => {
+                if (line.trim()) {
+                    try {
+                        const parsed = JSON.parse(line);
+                        sensorData = parsed;
+                        broadcastToClients({ event: 'arduino_data', data: parsed });
+                    }
+                    catch (e) {
+                        console.log('Bridge:', line);
+                    }
                 }
-                catch (e) {
-                    console.log('Arduino:', data.trim());
-                }
             });
-            arduinoPort.on('error', (err) => {
-                console.error('Arduino error:', err);
-                setTimeout(connectArduino, 5000);
-            });
-            console.log(`Connected to Arduino on ${arduinoPort2.path}`);
-        }
-        else {
-            console.log('No Arduino found, retrying in 5s...');
-            setTimeout(connectArduino, 5000);
-        }
-    });
+        });
+        bridgeProcess.stderr?.on('data', (data) => {
+            console.log('Bridge:', data.toString().trim());
+        });
+        bridgeProcess.on('close', () => {
+            console.log('Bridge disconnected, retrying...');
+            setTimeout(connectBridge, 3000);
+        });
+    }
+    catch (e) {
+        console.log('Bridge not available, running in simulation mode');
+    }
+}
+function sendToBridge(command) {
+    if (bridgeProcess) {
+        console.log('Sending to MCU:', command);
+    }
 }
 function broadcastToClients(message) {
     const msg = JSON.stringify(message);
@@ -97,16 +128,18 @@ function broadcastToClients(message) {
 wss.on('connection', (ws) => {
     clients.add(ws);
     console.log('Client connected');
+    if (Object.keys(sensorData).length > 0) {
+        ws.send(JSON.stringify({ event: 'arduino_data', data: sensorData }));
+    }
     ws.on('message', (message) => {
         try {
             const msg = JSON.parse(message.toString());
-            if (msg.event === 'command' && arduinoPort?.isOpen) {
-                arduinoPort.write(JSON.stringify(msg.data) + '\n');
+            if (msg.event === 'command') {
+                const cmd = JSON.stringify(msg.data);
+                sendToBridge(cmd);
             }
             if (msg.event === 'sensor_request') {
-                if (arduinoPort?.isOpen) {
-                    arduinoPort.write('GET_SENSORS\n');
-                }
+                broadcastToClients({ event: 'arduino_data', data: sensorData });
             }
         }
         catch (e) {
@@ -121,25 +154,29 @@ wss.on('connection', (ws) => {
 app.post('/api/map/save', (req, res) => {
     const { zones, roomPolygon } = req.body;
     console.log('Map saved:', { zones: zones?.length, roomPolygon: roomPolygon?.length });
+    try {
+        fs.writeFileSync('/home/root/omni-scrub/map.json', JSON.stringify({ zones, roomPolygon }, null, 2));
+    }
+    catch (e) { }
     res.json({ success: true });
 });
-app.get('/api/arduino/connect', (req, res) => {
-    serialport_1.SerialPort.list().then((ports) => {
-        res.json({ ports: ports.map(p => p.path) });
+app.get('/api/arduino/status', (req, res) => {
+    res.json({
+        connected: bridgeProcess !== null,
+        sensorData
     });
 });
 app.post('/api/arduino/send', (req, res) => {
     const { command } = req.body;
-    if (arduinoPort?.isOpen) {
-        arduinoPort.write(command + '\n');
-        res.json({ success: true });
-    }
-    else {
-        res.status(500).json({ error: 'Arduino not connected' });
-    }
+    sendToBridge(command);
+    res.json({ success: true });
 });
-server.listen(PORT, () => {
-    console.log(`Omni-Scrub server running on http://localhost:${PORT}`);
-    connectArduino();
+app.get('/api/sensors', (req, res) => {
+    res.json(sensorData);
+});
+server.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`Omni-Scrub server running on http://0.0.0.0:${PORT}`);
+    console.log('Access from other devices on your network');
+    connectBridge();
 });
 //# sourceMappingURL=server.js.map

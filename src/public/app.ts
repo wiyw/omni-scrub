@@ -744,6 +744,19 @@ function connectWS(): void {
             h: d.h || 60,
           }));
         }
+        if (msg.event === 'arduino_connected') {
+          const data = msg.data as { type: string; ip?: string; port?: number };
+          updateArduinoStatus(true, data.ip);
+        }
+        if (msg.event === 'arduino_error') {
+          const data = msg.data as { error: string };
+          updateArduinoStatus(false);
+          showToast('Arduino: ' + data.error);
+        }
+        if (msg.event === 'arduino_data' && msg.data?.distance !== undefined) {
+          const data = msg.data as { distance: number; mode?: string };
+          document.getElementById('mapHint')!.textContent = `Distance: ${data.distance}cm | Mode: ${data.mode || 'auto'}`;
+        }
       } catch (err) {}
     };
     ws.onclose = () => setTimeout(connectWS, 3000);
@@ -1097,6 +1110,49 @@ function showCamErr(msg: string): void {
     <button onclick="camNoFeed.innerHTML='<div class=cam-nofeed-icon>📷</div><div>No camera feed</div>'" style="margin-top:8px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--mono);font-size:.65rem;cursor:pointer">Dismiss</button>`;
 }
 
+function connectArduino(): void {
+  const ip = (document.getElementById('arduinoIp') as HTMLInputElement).value.trim();
+  if (!ip) {
+    showToast('Enter Arduino IP address');
+    return;
+  }
+  const btn = document.getElementById('btnArduinoConn') as HTMLButtonElement;
+  btn.textContent = 'Connecting...';
+  btn.disabled = true;
+  
+  fetch('/api/arduino/connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ip, port: 23 }),
+  }).then(() => {
+    showToast(`Connecting to ${ip}...`);
+  }).catch(() => {
+    btn.textContent = '🔌 Connect';
+    btn.disabled = false;
+    showToast('Connection failed');
+  });
+}
+
+function updateArduinoStatus(connected: boolean, ip?: string): void {
+  const btn = document.getElementById('btnArduinoConn') as HTMLButtonElement;
+  const status = document.getElementById('arduinoStatus')!;
+  const dot = document.getElementById('scanDot')!;
+  
+  btn.textContent = '🔌 Connect';
+  btn.disabled = false;
+  
+  if (connected) {
+    status.textContent = `Online (${ip})`;
+    status.style.color = '#39ff14';
+    dot.className = 'scan-dot done';
+    showToast('Arduino connected!');
+  } else {
+    status.textContent = 'Offline';
+    status.style.color = '#4a6278';
+    dot.className = 'scan-dot';
+  }
+}
+
 (window as any).setTool = setTool;
 (window as any).undoLast = undoLast;
 (window as any).clearAllZones = clearAllZones;
@@ -1123,5 +1179,6 @@ function showCamErr(msg: string): void {
 (window as any).selectPath = selectPath;
 (window as any).previewPath = previewPath;
 (window as any).clearPath = clearPath;
+(window as any).connectArduino = connectArduino;
 
 document.addEventListener('DOMContentLoaded', init);
