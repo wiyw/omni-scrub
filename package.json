@@ -4,8 +4,9 @@
   "description": "Omni-Scrub - Autonomous Floor Cleaning Robot",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && cp src/public/index.html dist/public/index.html",
+    "build": "tsc && cp src/public/index.html dist/public/index.html && cp dist/server.js ../omni-scrub/server.js",
     "start": "node dist/server.js",
+    "start:root": "node omni-scrub/server.js",
     "deploy": "npm run build && scp -r dist/* user@uno-q:/home/root/omni-scrub/"
   },
   "dependencies": {

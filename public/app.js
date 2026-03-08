@@ -765,66 +765,14 @@ function initCameraDrag() {
     });
     document.addEventListener('mouseup', () => { drag2 = false; });
 }
-let camStreamActive = false;
-let camAiMode = false;
-let camStreamImg = null;
 function toggleCam() {
     camOpen = !camOpen;
-    const btn = document.getElementById('btnCamera');
-    const placeholder = document.getElementById('camPlaceholder');
-    const streamImg = document.getElementById('camStream');
-    if (btn)
-        btn.classList.toggle('primary', camOpen);
-    if (camOpen) {
-        placeholder.style.display = 'none';
-        streamImg.style.display = 'block';
-        camStreamActive = true;
-        updateCamStream();
-        document.getElementById('pill-camera').classList.add('online');
-        document.getElementById('pill-camera-txt').textContent = 'Live';
-    }
-    else {
-        streamImg.src = '';
-        streamImg.style.display = 'none';
-        placeholder.style.display = 'flex';
-        camStreamActive = false;
-        document.getElementById('pill-camera').classList.remove('online');
-        document.getElementById('pill-camera-txt').textContent = 'Off';
-    }
-}
-function updateCamStream() {
-    const streamImg = document.getElementById('camStream');
-    if (camStreamActive && streamImg) {
-        const mode = camAiMode ? 'ai' : 'raw';
-        streamImg.src = `/api/camera/stream?${Date.now()}`;
-    }
-}
-function setCamMode(mode) {
-    camAiMode = mode === 'ai';
-    const btnRaw = document.getElementById('camBtnRaw');
-    const btnAi = document.getElementById('camBtnAi');
-    const camLabel = document.getElementById('camLabel');
-    if (btnRaw)
-        btnRaw.classList.toggle('primary', !camAiMode);
-    if (btnAi)
-        btnAi.classList.toggle('primary', camAiMode);
-    if (camLabel)
-        camLabel.textContent = camAiMode ? 'AI VISION' : 'LIVE';
-    if (camOpen) {
-        updateCamStream();
-    }
-    if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ event: 'vision_enable', data: { enabled: camAiMode } }));
-    }
-    if (camAiMode) {
-        document.getElementById('pill-ai').classList.add('online');
-        document.getElementById('pill-ai-txt').textContent = 'Active';
-    }
-    else {
-        document.getElementById('pill-ai').classList.remove('online');
-        document.getElementById('pill-ai-txt').textContent = 'AI Off';
-    }
-    showToast(camAiMode ? 'AI Vision enabled' : 'Raw camera mode');
+    camPanel.classList.toggle('open', camOpen);
+    document.getElementById('btnCamera').classList.toggle('cam-open', camOpen);
+    if (camOpen && camSource === 'webcam')
+        startWebcam();
+    if (!camOpen)
+        stopAllFeeds();
 }
 function toggleCamExpand() {
     camExpanded = !camExpanded;

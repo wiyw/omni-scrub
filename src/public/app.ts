@@ -98,6 +98,7 @@ let visionTimer: ReturnType<typeof setInterval> | null = null;
 let fpsFrames = 0;
 let fpsLast = Date.now();
 let demoDetections: Detection[] = [];
+let visionEnabled = false;
 
 let drag2 = false;
 let dx0 = 0;
@@ -858,12 +859,71 @@ function initCameraDrag(): void {
   document.addEventListener('mouseup', () => { drag2 = false; });
 }
 
+let camStreamActive = false;
+let camAiMode = false;
+let camStreamImg: HTMLImageElement | null = null;
+
 function toggleCam(): void {
   camOpen = !camOpen;
-  camPanel.classList.toggle('open', camOpen);
-  document.getElementById('btnCamera')!.classList.toggle('cam-open', camOpen);
-  if (camOpen && camSource === 'webcam') startWebcam();
-  if (!camOpen) stopAllFeeds();
+  const btn = document.getElementById('btnCamera');
+  const placeholder = document.getElementById('camPlaceholder');
+  const streamImg = document.getElementById('camStream') as HTMLImageElement;
+  
+  if (btn) btn.classList.toggle('primary', camOpen);
+  
+  if (camOpen) {
+    placeholder!.style.display = 'none';
+    streamImg.style.display = 'block';
+    camStreamActive = true;
+    updateCamStream();
+    document.getElementById('pill-camera')!.classList.add('online');
+    document.getElementById('pill-camera-txt')!.textContent = 'Live';
+  } else {
+    streamImg.src = '';
+    streamImg.style.display = 'none';
+    placeholder!.style.display = 'flex';
+    camStreamActive = false;
+    document.getElementById('pill-camera')!.classList.remove('online');
+    document.getElementById('pill-camera-txt')!.textContent = 'Off';
+  }
+}
+
+function updateCamStream(): void {
+  const streamImg = document.getElementById('camStream') as HTMLImageElement;
+  if (camStreamActive && streamImg) {
+    const mode = camAiMode ? 'ai' : 'raw';
+    streamImg.src = `/api/camera/stream?${Date.now()}`;
+  }
+}
+
+function setCamMode(mode: string): void {
+  camAiMode = mode === 'ai';
+  
+  const btnRaw = document.getElementById('camBtnRaw');
+  const btnAi = document.getElementById('camBtnAi');
+  const camLabel = document.getElementById('camLabel');
+  
+  if (btnRaw) btnRaw.classList.toggle('primary', !camAiMode);
+  if (btnAi) btnAi.classList.toggle('primary', camAiMode);
+  if (camLabel) camLabel.textContent = camAiMode ? 'AI VISION' : 'LIVE';
+  
+  if (camOpen) {
+    updateCamStream();
+  }
+  
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ event: 'vision_enable', data: { enabled: camAiMode } }));
+  }
+  
+  if (camAiMode) {
+    document.getElementById('pill-ai')!.classList.add('online');
+    document.getElementById('pill-ai-txt')!.textContent = 'Active';
+  } else {
+    document.getElementById('pill-ai')!.classList.remove('online');
+    document.getElementById('pill-ai-txt')!.textContent = 'AI Off';
+  }
+  
+  showToast(camAiMode ? 'AI Vision enabled' : 'Raw camera mode');
 }
 
 function toggleCamExpand(): void {
@@ -1100,6 +1160,25 @@ function takeSnapshot(): void {
     showToast('Snapshot saved 📸');
   } catch (e) {
     showToast('Snapshot ready');
+  }
+}
+
+function toggleVision(): void {
+  visionEnabled = !visionEnabled;
+  const btn = document.getElementById('visionToggle')!;
+  if (visionEnabled) {
+    btn.classList.add('active');
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    showToast('AI Vision enabled');
+  } else {
+    btn.classList.remove('active');
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    showToast('AI Vision disabled');
+  }
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ event: 'vision_enable', data: { enabled: visionEnabled } }));
   }
 }
 

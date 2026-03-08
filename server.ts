@@ -19,9 +19,12 @@ interface ClientMessage {
 
 let bridgeProcess: ReturnType<typeof spawn> | null = null;
 let yoloProcess: ReturnType<typeof spawn> | null = null;
+let qwenProcess: ChildProcessWithoutNullStreams | null = null;
+let cameraProcess: ReturnType<typeof spawn> | null = null;
 let clients: Set<WebSocket> = new Set();
 let sensorData: Record<string, unknown> = {};
 let visionEnabled = false;
+let qwenReady = false;
 let cameraAiMode = false;
 
 app.use(express.json());
@@ -40,7 +43,9 @@ function connectBridge() {
   }
 
   try {
-    bridgeProcess = spawn('python3', [bridgeScript], { shell: false });
+    bridgeProcess = spawn('python3', [bridgeScript], { 
+      shell: false
+    });
 
     bridgeProcess.stdout?.on('data', (data: Buffer) => {
       const lines = data.toString().split('\n');
@@ -120,6 +125,45 @@ function startYoloProcess() {
   }
 }
 
+function startQwenProcess() {
+  const qwenScript = path.join(__dirname, 'ai', 'qwen_runner.py');
+  
+  if (!fs.existsSync(qwenScript)) {
+    console.log('Qwen runner not found');
+    return;
+  }
+
+  try {
+    qwenProcess = spawn('python3', [qwenScript], { 
+      shell: true,
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    qwenProcess.stdout?.on('data', (data: Buffer) => {
+      console.log('Qwen:', data.toString().trim());
+    });
+
+    qwenProcess.stderr?.on('data', (data: Buffer) => {
+      const msg = data.toString().trim();
+      if (msg.includes('ready') || msg.includes('Done')) {
+        qwenReady = true;
+      }
+      console.log('Qwen:', msg);
+    });
+
+    qwenProcess.on('close', () => {
+      console.log('Qwen process exited');
+      qwenReady = false;
+      setTimeout(startQwenProcess, 5000);
+    });
+
+    console.log('Qwen process starting...');
+  } catch (e) {
+    console.log('Failed to start Qwen:', e);
+  }
+}
+
 function sendToBridge(command: string) {
   if (bridgeProcess) {
     console.log('Sending to MCU:', command);
@@ -163,6 +207,13 @@ wss.on('connection', (ws) => {
         }
         broadcastToClients({ event: 'vision_status', data: { enabled: visionEnabled } });
       }
+
+      if (msg.event === 'ai_query' && qwenProcess && qwenReady) {
+        const query = msg.data?.query as string;
+        if (query) {
+          qwenProcess.stdin.write(query + '\n');
+        }
+      }
     } catch (e) {
       console.error('Message error:', e);
     }
@@ -205,8 +256,25 @@ app.get('/api/sensors', (req, res) => {
 app.get('/api/ai/status', (req, res) => {
   res.json({
     yolo: yoloProcess !== null,
+    qwen: qwenReady,
     vision: visionEnabled
   });
+});
+
+app.post('/api/ai/query', (req, res) => {
+  const { query } = req.body;
+  
+  if (!qwenProcess || !qwenReady) {
+    res.json({ success: false, error: 'Qwen not ready' });
+    return;
+  }
+
+  try {
+    qwenProcess.stdin.write(query + '\n');
+    res.json({ success: true });
+  } catch (e) {
+    res.json({ success: false, error: String(e) });
+  }
 });
 
 app.post('/api/vision/toggle', (req, res) => {
@@ -220,6 +288,75 @@ app.post('/api/vision/toggle', (req, res) => {
   res.json({ success: true, enabled: visionEnabled });
 });
 
+function startCameraProcess() {
+  const camScript = path.join(__dirname, 'ai', 'camera_stream.py');
+  
+  if (!fs.existsSync(camScript)) {
+    console.log('Camera stream script not found');
+    return;
+  }
+
+  try {
+    cameraProcess = spawn('python3', [camScript], {
+      shell: true,
+      env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    });
+
+    cameraProcess.stderr?.on('data', (data: Buffer) => {
+      console.log('Camera:', data.toString().trim());
+    });
+
+    cameraProcess.on('close', () => {
+      console.log('Camera process exited, restarting...');
+      setTimeout(startCameraProcess, 3000);
+    });
+
+    console.log('Camera process started');
+  } catch (e) {
+    console.log('Failed to start camera:', e);
+  }
+}
+
+app.get('/api/camera/stream', (req, res) => {
+  const aiMode = req.query.ai === 'true';
+  res.setHeader('Content-Type', 'multipart/x-mixed-replace; boundary=frame');
+  res.setHeader('Cache-Control', 'no-cache');
+  
+  const scriptPath = path.join(__dirname, 'ai', 'camera_stream.py');
+  const aiArg = aiMode ? '1' : '0';
+  
+  const proc = spawn('python3', [scriptPath, aiArg], { shell: false });
+  
+  proc.stdout.on('data', (data: Buffer) => {
+    if (!res.writableEnded) {
+      res.write(data);
+    }
+  });
+  
+  proc.on('close', () => {
+    if (!res.writableEnded) {
+      res.end();
+    }
+  });
+  
+  req.on('close', () => {
+    proc.kill();
+  });
+});
+
+app.get('/api/camera/status', (req, res) => {
+  res.json({
+    available: cameraProcess !== null,
+    aiMode: cameraAiMode
+  });
+});
+
+app.post('/api/camera/ai', (req, res) => {
+  const { enabled } = req.body;
+  cameraAiMode = enabled === true;
+  res.json({ success: true, aiMode: cameraAiMode });
+});
+
 server.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════╗
@@ -229,4 +366,6 @@ server.listen(Number(PORT), '0.0.0.0', () => {
 ╚═══════════════════════════════════════════╝
   `);
   connectBridge();
+  startQwenProcess();
+  startCameraProcess();
 });
